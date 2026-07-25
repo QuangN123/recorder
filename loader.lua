@@ -3132,11 +3132,7 @@ local function DoPlaceTower(TName, TPos, ...)
     local rand = Random.new()
     local jitter = Vector3.new(rand:NextNumber(-0.1, 0.1), 0, rand:NextNumber(-0.1, 0.1))
     local attemptPos = TPos + jitter
-    Logger:Log("Placing tower: " .. TName .. " at " .. FormatPosition(attemptPos))
-
-    pcall(function()
-        PathfindAndApproach(attemptPos, 2)
-    end)
+    Logger:Log("Placing tower: " .. TName .. " target=" .. FormatPosition(TPos) .. " offset=" .. FormatPosition(jitter) .. " actual=" .. FormatPosition(attemptPos))
 
     while true do
         local ok, res = pcall(function()
@@ -3155,19 +3151,6 @@ end
 
 local function DoUpgradeTower(TObj, PathId)
     while true do
-        pcall(function()
-            local targetPos
-            if type(TObj) == "table" and TObj.PrimaryPart then
-                targetPos = TObj.PrimaryPart.Position
-            elseif type(TObj) == "userdata" and TObj:IsA("Instance") then
-                local prim = TObj:FindFirstChild("PrimaryPart") or TObj:FindFirstChildWhichIsA("BasePart")
-                if prim and prim.Position then targetPos = prim.Position end
-            end
-            if targetPos then
-                PathfindAndApproach(targetPos, 6)
-            end
-        end)
-
         local ok, res = pcall(function()
             return RemoteFunc:InvokeServer("Troops", "Upgrade", "Set", {
                 Troop = TObj,
@@ -3453,6 +3436,35 @@ function TDS:Loadout(...)
                 end
             end
         end
+    end
+
+    local function normalizeLoadout(list)
+        local normalized = {}
+        for _, value in ipairs(list) do
+            if value and value ~= "" and value ~= "None" then
+                table.insert(normalized, value)
+            end
+        end
+        return normalized
+    end
+
+    local function sameLoadout(a, b)
+        if #a ~= #b then
+            return false
+        end
+        for i = 1, #a do
+            if a[i] ~= b[i] then
+                return false
+            end
+        end
+        return true
+    end
+
+    local requestedLoadout = normalizeLoadout(towers)
+    local currentLoadout = normalizeLoadout(CurrentlyEquipped)
+    if sameLoadout(requestedLoadout, currentLoadout) then
+        Logger:Log("Loadout already equipped")
+        return true
     end
 
     for _, CurrentTower in ipairs(CurrentlyEquipped) do
