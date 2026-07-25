@@ -3048,6 +3048,18 @@ local function GetCurrentWave()
     return tonumber(WaveNum) or 0
 end
 
+local function WaitWithJitter(seconds)
+    local jittered = seconds * (1 + (math.random(-10, 10) / 100))
+    task.wait(jittered)
+end
+
+local function FormatPosition(pos)
+    if not pos then
+        return "(nil)"
+    end
+    return string.format("(%.3f, %.3f, %.3f)", pos.X or 0, pos.Y or 0, pos.Z or 0)
+end
+
 local function PathfindAndApproach(targetPos, stopDistance)
     local root = GetRoot()
     if not root then return false end
@@ -3056,9 +3068,18 @@ local function PathfindAndApproach(targetPos, stopDistance)
         return true
     end
 
-    local path = PathfindingService:CreatePath()
-    path:ComputeAsync(startPos, targetPos)
-    if path.Status ~= Enum.PathStatus.Success then
+    local path = PathfindingService:CreatePath({
+        AgentRadius = 2,
+        AgentHeight = 5,
+        AgentCanJump = true,
+        WaypointSpacing = 2.5
+    })
+
+    local success, pathStatus = pcall(function()
+        path:ComputeAsync(startPos, targetPos)
+    end)
+
+    if not success or path.Status ~= Enum.PathStatus.Success then
         return false
     end
 
@@ -3069,17 +3090,22 @@ local function PathfindAndApproach(targetPos, stopDistance)
 
     for _, wp in ipairs(waypoints) do
         if wp.Action == Enum.PathWaypointAction.Jump then
-            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            humanoid.Jump = true
         end
+
         humanoid:MoveTo(wp.Position)
-        local ok = humanoid.MoveToFinished:Wait()
-        if not ok then
-            -- continue trying next waypoint but allow timeout
-        end
-        local curRoot = GetRoot()
-        if not curRoot then return false end
-        if (curRoot.Position - targetPos).Magnitude <= stopDistance then
-            return true
+
+        local started = os.clock()
+        while os.clock() - started < 1.2 do
+            task.wait(0.05)
+            local curRoot = GetRoot()
+            if not curRoot then return false end
+            if (curRoot.Position - targetPos).Magnitude <= stopDistance then
+                return true
+            end
+            if (curRoot.Position - wp.Position).Magnitude <= 2 then
+                break
+            end
         end
     end
 
@@ -3092,16 +3118,17 @@ end
 
 local function DoPlaceTower(TName, TPos, ...)
     local args = {...}
-    Logger:Log("Placing tower: " .. TName)
     local rand = Random.new()
 
     while true do
         local jitter = Vector3.new(rand:NextNumber(-0.1, 0.1), 0, rand:NextNumber(-0.1, 0.1))
         local attemptPos = TPos + jitter
-        -- attempt to pathfind near the placement position if we're not already close
+        Logger:Log("Placing tower: " .. TName .. " at " .. FormatPosition(attemptPos))
+
         pcall(function()
             PathfindAndApproach(attemptPos, 2)
         end)
+
         local ok, res = pcall(function()
             return RemoteFunc:InvokeServer("Troops", "Place", {
                 Rotation = CFrame.new(),
@@ -3112,13 +3139,12 @@ local function DoPlaceTower(TName, TPos, ...)
         if ok and CheckResOk(res) then
             return true
         end
-        task.wait(0.25)
+        WaitWithJitter(0.25)
     end
 end
 
 local function DoUpgradeTower(TObj, PathId)
     while true do
-        -- try to move near the tower we're upgrading if it's a model with a primary part
         pcall(function()
             local targetPos
             if type(TObj) == "table" and TObj.PrimaryPart then
@@ -3139,7 +3165,7 @@ local function DoUpgradeTower(TObj, PathId)
             })
         end)
         if ok and CheckResOk(res) then return true end
-        task.wait(0.25)
+        WaitWithJitter(0.25)
     end
 end
 
@@ -3149,13 +3175,13 @@ local function DoSellTower(TObj)
             return RemoteFunc:InvokeServer("Troops", "Sell", { Troop = TObj })
         end)
         if ok and CheckResOk(res) then return true end
-        task.wait(0.25)
+        WaitWithJitter(0.25)
     end
 end
 
 local function DoSetOption(TObj, OptName, OptVal, ReqWave)
     if ReqWave then
-        repeat task.wait(0.3) until GetCurrentWave() >= ReqWave
+        repeat WaitWithJitter(0.3) until GetCurrentWave() >= ReqWave
     end
 
     while true do
@@ -3167,7 +3193,7 @@ local function DoSetOption(TObj, OptName, OptVal, ReqWave)
             })
         end)
         if ok and CheckResOk(res) then return true end
-        task.wait(0.25)
+        WaitWithJitter(0.25)
     end
 end
 
@@ -3180,6 +3206,7 @@ local function DoActivateAbility(TObj, AbName, AbData, IsLooping)
     AbData = type(AbData) == "table" and AbData or nil
 
     local positions
+    local basePos = AbData and AbData.towerPosition
     if AbData and type(AbData.towerPosition) == "table" then
         positions = AbData.towerPosition
     end
@@ -3220,7 +3247,18 @@ local function DoActivateAbility(TObj, AbName, AbData, IsLooping)
                     data = table.clone(AbData)
 
                     if positions and #positions > 0 then
-                        data.towerPosition = positions[math.random(#positions)]
+                        local picked = positions[math.random(#positions)]
+                        if picked and typeof(picked) == "Vector3" then
+                            local jitter = Vector3.new(math.random(-0.1, 0.1), 0, math.random(-0.1, 0.1))
+                            data.towerPosition = picked + jitter
+                            Logger:Log("Clone ability target: " .. FormatPosition(data.towerPosition))
+                        else
+                            data.towerPosition = picked
+                        end
+                    elseif typeof(basePos) == "Vector3" then
+                        local jitter = Vector3.new(math.random(-0.1, 0.1), 0, math.random(-0.1, 0.1))
+                        data.towerPosition = basePos + jitter
+                        Logger:Log("Clone ability target: " .. FormatPosition(data.towerPosition))
                     end
 
                     if type(CloneIdx) == "number" then
@@ -3253,7 +3291,7 @@ local function DoActivateAbility(TObj, AbName, AbData, IsLooping)
                 return true
             end
 
-            task.wait(0.25)
+            WaitWithJitter(0.25)
         end
     end
 

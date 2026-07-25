@@ -1,4 +1,4 @@
-local TDS = loadstring(game:HttpGet("https://raw.githubusercontent.com/DuxiiT/auto-strat/refs/heads/main/Library.lua"))()
+local TDS = loadstring(game:HttpGet("https://raw.githubusercontent.com/QuangN123/recorder/refs/heads/main/loader.lua"))()
 TDS:Loadout("Farm", "Freezer", "Shotgunner", "Commander", "EvolvedJuggernaut")
 TDS:Mode("Frost")
 TDS:GameInfo("Simplicity", {HiddenEnemies = true, Glass = true, Committed = true, ExplodingEnemies = true})
