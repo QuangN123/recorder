@@ -3130,16 +3130,17 @@ end
 local function DoPlaceTower(TName, TPos, ...)
     local args = {...}
     local rand = Random.new()
-    local xOff = rand:NextNumber(-0.1, 0.1)
-    local zOff = rand:NextNumber(-0.1, 0.1)
-    local jitter = Vector3.new(xOff, 0, zOff)
-    local attemptPos = Vector3.new(TPos.X + xOff, TPos.Y, TPos.Z + zOff)
-    Logger:Log("Placing tower: " .. TName)
-    Logger:Log("target=" .. FormatPosition(TPos))
-    Logger:Log("offset=(" .. string.format("%.4f, %.4f", xOff, zOff) .. ")")
-    Logger:Log("actual=" .. FormatPosition(attemptPos))
 
     while true do
+        local xOff = rand:NextNumber(-0.1, 0.1)
+        local zOff = rand:NextNumber(-0.1, 0.1)
+        local jitter = Vector3.new(xOff, 0, zOff)
+        local attemptPos = Vector3.new(TPos.X + xOff, TPos.Y, TPos.Z + zOff)
+        Logger:Log("Placing tower: " .. TName)
+        Logger:Log("target=" .. FormatPosition(TPos))
+        Logger:Log("offset=(" .. string.format("%.4f, %.4f", xOff, zOff) .. ")")
+        Logger:Log("actual=" .. FormatPosition(attemptPos))
+
         local ok, res = pcall(function()
             return RemoteFunc:InvokeServer("Troops", "Place", {
                 Rotation = CFrame.new(),

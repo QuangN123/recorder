@@ -141,12 +141,12 @@ TDS:Upgrade(27)
 TDS:Upgrade(15)
 TDS:Upgrade(15)
 TDS:Upgrade(15, 2)
-TDS:Place("Hacker", 3.2090394496917725, 0.9999831914901733, -3.7554450035095215)    -- Index 28
+TDS:Place("Hacker", -12.417181015014648, 0.9999831914901733, 3.8280177116394043)    -- Index 28
 TDS:Upgrade(28)
 TDS:Upgrade(28)
 TDS:Upgrade(28)
 TDS:Upgrade(28)
 TDS:Upgrade(28, 2)
 TDS:SetOption(7, "Track", "Red")
-TDS:Ability(15, "Hologram Tower", { towerPositon = Vector3.new(4.283426761627197, 0.9999831914901733, 3.4843626022338867), towerToClone = "EvolvedJuggernaut" })
+TDS:Ability(15, "Hologram Tower", { towerPositon = Vector3.new(4.393224716186523, 0.9999831914901733, 3.6048851013183594), towerToClone = "EvolvedJuggernaut" })
 
