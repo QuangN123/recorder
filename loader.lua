@@ -3072,13 +3072,12 @@ local function PathfindAndApproach(targetPos, stopDistance)
         AgentRadius = 2,
         AgentHeight = 5,
         AgentCanJump = true,
-        WaypointSpacing = 2.5
+        WaypointSpacing = 3
     })
 
-    local success, pathStatus = pcall(function()
+    local success = pcall(function()
         path:ComputeAsync(startPos, targetPos)
     end)
-
     if not success or path.Status ~= Enum.PathStatus.Success then
         return false
     end
@@ -3093,42 +3092,53 @@ local function PathfindAndApproach(targetPos, stopDistance)
             humanoid.Jump = true
         end
 
-        humanoid:MoveTo(wp.Position)
+        local waypointReached = false
+        local connection = humanoid.MoveToFinished:Connect(function(reached)
+            if reached then
+                local curRoot = GetRoot()
+                if curRoot and (curRoot.Position - wp.Position).Magnitude <= 4 then
+                    waypointReached = true
+                end
+            end
+        end)
 
-        local started = os.clock()
-        while os.clock() - started < 1.2 do
+        humanoid:MoveTo(wp.Position)
+        local timeout = os.clock() + 3
+        while os.clock() < timeout and not waypointReached do
             task.wait(0.05)
             local curRoot = GetRoot()
-            if not curRoot then return false end
-            if (curRoot.Position - targetPos).Magnitude <= stopDistance then
-                return true
+            if not curRoot then
+                connection:Disconnect()
+                return false
             end
-            if (curRoot.Position - wp.Position).Magnitude <= 2 then
+            if (curRoot.Position - wp.Position).Magnitude <= 4 then
+                waypointReached = true
                 break
             end
+        end
+        connection:Disconnect()
+
+        if not waypointReached then
+            return false
         end
     end
 
     local finalRoot = GetRoot()
-    if finalRoot and (finalRoot.Position - targetPos).Magnitude <= stopDistance then
-        return true
-    end
-    return false
+    return finalRoot and (finalRoot.Position - targetPos).Magnitude <= stopDistance
 end
 
 local function DoPlaceTower(TName, TPos, ...)
     local args = {...}
     local rand = Random.new()
+    local jitter = Vector3.new(rand:NextNumber(-0.1, 0.1), 0, rand:NextNumber(-0.1, 0.1))
+    local attemptPos = TPos + jitter
+    Logger:Log("Placing tower: " .. TName .. " at " .. FormatPosition(attemptPos))
+
+    pcall(function()
+        PathfindAndApproach(attemptPos, 2)
+    end)
 
     while true do
-        local jitter = Vector3.new(rand:NextNumber(-0.1, 0.1), 0, rand:NextNumber(-0.1, 0.1))
-        local attemptPos = TPos + jitter
-        Logger:Log("Placing tower: " .. TName .. " at " .. FormatPosition(attemptPos))
-
-        pcall(function()
-            PathfindAndApproach(attemptPos, 2)
-        end)
-
         local ok, res = pcall(function()
             return RemoteFunc:InvokeServer("Troops", "Place", {
                 Rotation = CFrame.new(),
