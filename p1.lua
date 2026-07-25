@@ -148,5 +148,5 @@ TDS:Upgrade(28)
 TDS:Upgrade(28)
 TDS:Upgrade(28, 2)
 TDS:SetOption(7, "Track", "Red")
-TDS:Ability(15, "Hologram Tower", { towerPositon = Vector3.new(4.393224716186523, 0.9999831914901733, 3.6048851013183594), towerToClone = "EvolvedJuggernaut" })
+TDS:Ability(15, "Hologram Tower", { towerPosition = Vector3.new(4.393224716186523, 0.9999831914901733, 3.6048851013183594), towerToClone = "EvolvedJuggernaut" }, 400000)
 

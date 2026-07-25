@@ -3239,11 +3239,26 @@ local function DoActivateAbility(TObj, AbName, AbData, IsLooping)
 
     local function attempt()
         while true do
+            -- if a cash requirement was provided, wait until player has enough
+            local reqCash = AbData and tonumber(AbData.reqCash)
+            if reqCash and reqCash > 0 then
+                local coinsObj = LocalPlayer:FindFirstChild("Coins")
+                local have = (coinsObj and coinsObj.Value) or 0
+                while have < reqCash do
+                    Logger:Log("Waiting for cash: have=" .. tostring(have) .. " need=" .. tostring(reqCash))
+                    WaitWithJitter(0.5)
+                    coinsObj = LocalPlayer:FindFirstChild("Coins")
+                    have = (coinsObj and coinsObj.Value) or 0
+                end
+            end
+
             local ok, res = pcall(function()
                 local data
 
                 if AbData then
                     data = table.clone(AbData)
+                    -- don't send reqCash to the server
+                    data.reqCash = nil
 
                     if positions and #positions > 0 then
                         local picked = positions[math.random(#positions)]
@@ -3732,8 +3747,20 @@ end
 function TDS:Ability(idx, name, data, loop)
     local t = self.PlacedTowers[idx]
     if not t then return false end
+    -- support passing reqCash as a 4th numeric argument or inside the data table
+    local isLoop = loop
+    if type(loop) == "number" then
+        data = data or {}
+        if data.reqCash == nil then data.reqCash = loop end
+        isLoop = nil
+    elseif type(loop) == "table" and loop.reqCash then
+        data = data or {}
+        if data.reqCash == nil then data.reqCash = loop.reqCash end
+        isLoop = nil
+    end
+
     Logger:Log("Activating ability '" .. name .. "' for tower index: " .. idx)
-    return DoActivateAbility(t, name, data, loop)
+    return DoActivateAbility(t, name, data, isLoop)
 end
 
 function TDS:AutoChain(...)
