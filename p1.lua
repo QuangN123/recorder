@@ -1,5 +1,5 @@
 local TDS = loadstring(game:HttpGet("https://raw.githubusercontent.com/QuangN123/recorder/refs/heads/main/loader.lua"))()
-TDS:Loadout("Farm", "Brawler", "Engineer", "Hacker", "DJ Booth")
+TDS:Loadout("Farm", "Brawler", "Crook Boss", "Hacker", "DJ Booth")
 TDS:Mode("Frost")
 TDS:GameInfo("Simplicity", {HiddenEnemies = true, Glass = true, Committed = true, ExplodingEnemies = true})
 TDS:Place("Brawler", -18.145973205566406, 0.9999834895133972, -4.6852827072143555)
