@@ -3222,13 +3222,12 @@ end
 
 local function DoPlaceTower(TName, TPos, ...)
     local args = {...}
-    local offsetPos = ApplyRandomOffset(TPos)
     Logger:Log("Placing tower: " .. TName)
     while true do
         local ok, res = pcall(function()
             return RemoteFunc:InvokeServer("Troops", "Place", {
                 Rotation = CFrame.new(),
-                Position = offsetPos
+                Position = ApplyRandomOffset(TPos)
             }, TName, unpack(args))
         end)
 
@@ -3507,36 +3506,69 @@ function TDS:Loadout(...)
         end
     end
 
-    for _, CurrentTower in ipairs(CurrentlyEquipped) do
-        if CurrentTower ~= "None" then
-            local UnequipDone = false
-            repeat
-                local ok = pcall(function()
-                    remote:FireServer("Inventory", "Unequip", "Tower", CurrentTower)
-                    task.wait(0.3)
-                end)
-                if ok then UnequipDone = true else task.wait(0.2) end
-            until UnequipDone
-        end
-    end
-
-    task.wait(0.5)
-
+    local desiredSet = {}
+    local desiredList = {}
     for _, TowerName in ipairs(towers) do
-        if TowerName and TowerName ~= "" then
-            local EquipSuccess = false
-            repeat
-                local ok = pcall(function()
-                    remote:FireServer("Inventory", "Equip", "Tower", TowerName)
-                    Logger:Log("Equipped tower: " .. TowerName)
-                    task.wait(0.3)
-                end)
-                if ok then EquipSuccess = true else task.wait(0.2) end
-            until EquipSuccess
+        if TowerName and TowerName ~= "" and TowerName ~= "None" and not desiredSet[TowerName] then
+            desiredSet[TowerName] = true
+            table.insert(desiredList, TowerName)
         end
     end
 
-    task.wait(0.5)
+    local equippedSet = {}
+    local toUnequip = {}
+    for _, CurrentTower in ipairs(CurrentlyEquipped) do
+        if CurrentTower and CurrentTower ~= "None" then
+            equippedSet[CurrentTower] = true
+            if not desiredSet[CurrentTower] then
+                table.insert(toUnequip, CurrentTower)
+            end
+        end
+    end
+
+    for _, CurrentTower in ipairs(toUnequip) do
+        local UnequipDone = false
+        repeat
+            local ok = pcall(function()
+                remote:FireServer("Inventory", "Unequip", "Tower", CurrentTower)
+                task.wait(0.3)
+            end)
+            if ok then UnequipDone = true else task.wait(0.2) end
+        until UnequipDone
+    end
+
+    if #toUnequip > 0 then
+        task.wait(0.5)
+    end
+
+    local toEquip = {}
+    for _, TowerName in ipairs(desiredList) do
+        if not equippedSet[TowerName] then
+            table.insert(toEquip, TowerName)
+        end
+    end
+
+    for _, TowerName in ipairs(toEquip) do
+        local EquipSuccess = false
+        repeat
+            local ok = pcall(function()
+                remote:FireServer("Inventory", "Equip", "Tower", TowerName)
+                Logger:Log("Equipped tower: " .. TowerName)
+                task.wait(0.3)
+            end)
+            if ok then
+                EquipSuccess = true
+                equippedSet[TowerName] = true
+            else
+                task.wait(0.2)
+            end
+        until EquipSuccess
+    end
+
+    if #toEquip > 0 then
+        task.wait(0.5)
+    end
+
     return true
 end
 
